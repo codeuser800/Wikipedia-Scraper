@@ -1,6 +1,93 @@
+h1::before {
+    transform: scaleX(0);
+    transform-origin: bottom right;
+    float: left;
+}
+
+h1:hover::before {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+}
+
+h1::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    inset: 0 0 0 0;
+    background: hsl(328, 35%, 74%);
+    z-index: -1;
+    transition: transform .3s ease;
+}
+
+h1 {
+    position: fixed;
+    margin-left: 50 px;
+    margin-top: 5 px;
+    font-size: 5rem;
+    font-style: italic;
+    color: aquamarine;
+    font-family: fantasy;
+}
+
+html {
+    block-size: 100%;
+    inline-size: 100%;
+}
+
 body {
-    max-width: 1000px;
-    margin: auto;
-    background: #FAFAFA;
-    font-family: Helvetica;
+    min-block-size: 100%;
+    min-inline-size: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    display: grid;
+    place-content: center;
+    font-family: system-ui, sans-serif;
+}
+
+@media (orientation: landscape) {
+    body {
+        grid-auto-flow: column;
+    }
+}
+
+.to_find {
+    position: fixed;
+    margin-top: 200px;
+    color: white;
+    font-kerning: auto;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+.instructions {
+    position: fixed;
+    margin-top: 300px;
+    color: white;
+    font-kerning: auto;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+th,
+td {
+    color: white;
+    border: 1px dashed rgb(148, 118, 216);
+    padding: 20px;
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+}
+
+th {
+    width: 25%;
+}
+
+.button {
+    background-color: beige;
+    color: brown
+}
+
+.button:hover {
+    background-color: coral;
+    color: white;
 }
