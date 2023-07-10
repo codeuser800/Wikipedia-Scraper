@@ -60,22 +60,25 @@ body {
     color: white;
     font-kerning: auto;
     font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 30px;
 }
 
 .instructions {
     position: fixed;
-    margin-top: 300px;
+    margin-top: 350px;
     color: white;
     font-kerning: auto;
     font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 30px;
 }
 
 th,
 td {
-    color: white;
+    color: rgb(157, 224, 107);
     border: 1px dashed rgb(148, 118, 216);
     padding: 20px;
     font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    font-size: 40px;
 }
 
 th {
@@ -90,4 +93,14 @@ th {
 .button:hover {
     background-color: coral;
     color: white;
+}
+
+.congrats {
+    position: absolute;
+    text-align: center;
+    margin-top: 450px;
+    margin-left: 400px;
+    color: darkorchid;
+    font-size: 50px;
+
 }
