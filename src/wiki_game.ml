@@ -1,4 +1,5 @@
 open! Core
+open! String
 
 (* [get_linked_articles] should return a list of wikipedia article lengths
    contained in the input.
@@ -14,6 +15,14 @@ open! Core
    results in uniformity in article format. We can expect that all Wikipedia
    article links parsed from a Wikipedia page will have the form
    "/wiki/<TITLE>". *)
+
+let wiki_link to_check =
+  let value = String.split_on_chars to_check ~on:[ '/' ] in
+  match value with
+  | _ :: compare :: _ -> if String.( = ) compare "wiki" then true else false
+  | _ -> false
+;;
+
 let get_linked_articles contents : string list =
   let open Soup in
   parse contents
@@ -22,9 +31,12 @@ let get_linked_articles contents : string list =
   |> List.fold ~init:[] ~f:(fun acc a ->
        let attr = R.attribute "href" a in
        let wiki_type = Wikipedia_namespace.namespace attr in
-       match wiki_type with
-       | Wikipedia.namespace.t Talk -> acc @ [ R.attribute "href" a ]
-       | _ -> acc)
+       if wiki_link attr
+       then (
+         match wiki_type with
+         | None -> acc @ [ R.attribute "href" a ]
+         | Some _name -> acc)
+       else acc)
 ;;
 
 let print_links_command =
