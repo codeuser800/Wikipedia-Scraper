@@ -23,6 +23,7 @@ let wiki_link to_check =
   | _ -> false
 ;;
 
+(*Remove duplicates from the list*)
 let get_linked_articles contents : string list =
   let open Soup in
   parse contents
