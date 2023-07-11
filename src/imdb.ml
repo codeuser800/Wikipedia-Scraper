@@ -24,6 +24,7 @@ let print_credits_command =
         List.iter (get_credits contents) ~f:print_endline]
 ;;
 
+
 let command =
   Command.group
     ~summary:"imdb commands"
