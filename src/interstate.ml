@@ -95,6 +95,10 @@ let visualize_command =
           (* [G.add_edge] auomatically adds the endpoints as vertices in the
              graph if they don't already exist. *)
           let edge = G.E.create city_1 highway city_2 in
+          let () =
+            print_s
+              [%message (city_1, highway, city_2 : string * string * string)]
+          in
           G.add_edge_e graph edge);
         Dot.output_graph
           (Out_channel.create (File_path.to_string output_file))
