@@ -1,16 +1,30 @@
 open! Core
 
+let no_dots city = String.substr_replace_all city ~pattern:"." ~with_:""
+
 let load_file file =
-  let adjacency_list = Set.empty in
-  In_channel.read_lines (File_path.to_string file)
-  |> List.fold ~init:adjacency_list ~f:(fun s ->
-       (* let () = print_s [%message (s : string)] in [ s ]) *)
-       let (interstate :: highway) = String.split s ~on:',' in let current_highway = 
-       List.mapi highway ~f:(index current city ->
-       if i < List.length highway 
-      then (current_city, List.ne)
-      else ) 
-      in 
+  let file_list = In_channel.read_lines (File_path.to_string file) in
+  let final_cities =
+    List.fold file_list ~init:[] ~f:(fun city_list s ->
+      let potential_cities = String.split s ~on:',' in
+      match potential_cities with
+      | interstate :: highway ->
+        city_list
+        @ List.foldi highway ~init:[] ~f:(fun index acc current_city ->
+            if index < List.length highway - 1
+            then
+              acc
+              @ [ ( no_dots current_city
+                  , interstate
+                  , no_dots (List.nth_exn highway (index + 1)) )
+                ]
+            else acc)
+      | _ -> city_list)
+  in
+  let () =
+    print_s [%message (final_cities : (string * string * string) list)]
+  in
+  final_cities
 ;;
 
 let load_command =
@@ -29,6 +43,30 @@ let load_command =
         let _return_list = load_file input_file in
         ()]
 ;;
+
+module MyString = struct
+  include String
+
+  let default = ""
+end
+
+module G = Graph.Imperative.Graph.ConcreteLabeled (String) (MyString)
+
+module Dot = Graph.Graphviz.Dot (struct
+  include G
+
+  (* These functions can be changed to tweak the appearance of the generated
+     graph. Check out the ocamlgraph graphviz API
+     (https://github.com/backtracking/ocamlgraph/blob/master/src/graphviz.mli)
+     for examples of what values can be set here. *)
+  let edge_attributes _ = [ `Dir `None ]
+  let default_edge_attributes _ = []
+  let get_subgraph _ = None
+  let vertex_attributes v = [ `Shape `Box; `Label v; `Fillcolor 1000 ]
+  let vertex_name v = v
+  let default_vertex_attributes _ = []
+  let graph_attributes _ = []
+end)
 
 let visualize_command =
   let open Command.Let_syntax in
@@ -51,8 +89,16 @@ let visualize_command =
           ~doc:"FILE where to write generated graph"
       in
       fun () ->
-        ignore (input_file : File_path.t);
-        ignore (output_file : File_path.t);
+        let network = load_file input_file in
+        let graph = G.create () in
+        List.iter network ~f:(fun (city_1, highway, city_2) ->
+          (* [G.add_edge] auomatically adds the endpoints as vertices in the
+             graph if they don't already exist. *)
+          let edge = G.E.create city_1 highway city_2 in
+          G.add_edge_e graph edge);
+        Dot.output_graph
+          (Out_channel.create (File_path.to_string output_file))
+          graph;
         printf !"Done! Wrote dot file to %{File_path}\n%!" output_file]
 ;;
 
