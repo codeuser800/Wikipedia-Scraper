@@ -47,7 +47,7 @@ let load_command =
 module MyString = struct
   include String
 
-  let default = ""
+  let default = "hello"
 end
 
 module G = Graph.Imperative.Graph.ConcreteLabeled (String) (MyString)
@@ -59,7 +59,7 @@ module Dot = Graph.Graphviz.Dot (struct
      graph. Check out the ocamlgraph graphviz API
      (https://github.com/backtracking/ocamlgraph/blob/master/src/graphviz.mli)
      for examples of what values can be set here. *)
-  let edge_attributes _ = [ `Dir `None ]
+  let edge_attributes e = [ `Dir `None; `Label (G.E.label e) ]
   let default_edge_attributes _ = []
   let get_subgraph _ = None
   let vertex_attributes v = [ `Shape `Box; `Label v; `Fillcolor 1000 ]
