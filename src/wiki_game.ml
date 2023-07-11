@@ -38,6 +38,7 @@ let get_linked_articles contents : string list =
          | None -> acc @ [ R.attribute "href" a ]
          | Some _name -> acc)
        else acc)
+  |> List.dedup_and_sort ~compare:String.compare
 ;;
 
 let print_links_command =
