@@ -16,6 +16,11 @@ open! String
    article links parsed from a Wikipedia page will have the form
    "/wiki/<TITLE>". *)
 
+type article =
+  { name : string
+  ; url : string
+  }
+
 let wiki_link to_check =
   let value = String.split_on_chars to_check ~on:[ '/' ] in
   match value with
