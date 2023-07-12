@@ -59,7 +59,10 @@ let print_links_command =
 ;;
 
 let remove_url city =
-  String.substr_replace_all city ~pattern:"/wiki/" ~with_:""
+  (* String.substr_replace_all city ~pattern:"/wiki/" ~with_:"" |> *)
+  String.substr_replace_all city ~pattern:"(" ~with_:""
+  |> String.substr_replace_all ~pattern:")" ~with_:""
+  |> String.substr_replace_all ~pattern:"/" ~with_:""
 ;;
 
 let next_articles ~origin ~how_to_fetch =
@@ -81,35 +84,53 @@ let rec get_all_articles
   else (
     Core.Hash_set.add visited_links curr_link;
     let next_articles = next_articles ~origin:curr_link ~how_to_fetch in
-    let fold =
-      List.fold next_articles ~init:[] ~f:(fun acc next_article ->
-        let next_article_rec =
-          { name = remove_url next_article; url = next_article }
-        in
-        let edge = curr_article, next_article_rec in
-        let new_article_list = edge :: article_list in
-        if not (Core.Hash_set.mem visited_links next_article)
-        then
-          get_all_articles
+    List.fold next_articles ~init:article_list ~f:(fun acc next_article ->
+      let next_article_rec =
+        { name = remove_url next_article; url = next_article }
+      in
+      let edge = curr_article, next_article_rec in
+      (* let () = print_s [%message (edge : article * article)] in *)
+      let new_article_list = edge :: acc in
+      (* let () = print_s [%message (new_article_list : (article * article)
+         list)] in *)
+      if not (Core.Hash_set.mem visited_links next_article)
+      then
+        acc
+        @ get_all_articles
             ~article_list:new_article_list
             ~curr_link:next_article
             ~curr_article:next_article_rec
             ~visited_links
             ~depth:(depth - 1)
             ~how_to_fetch
-          :: acc
-        else acc)
-    in
-    List.concat fold)
+      else new_article_list))
 ;;
+
+module G = Graph.Imperative.Graph.Concrete (String)
+
+module Dot = Graph.Graphviz.Dot (struct
+  include G
+
+  (* These functions can be changed to tweak the appearance of the generated
+     graph. Check out the ocamlgraph graphviz API
+     (https://github.com/backtracking/ocamlgraph/blob/master/src/graphviz.mli)
+     for examples of what values can be set here. *)
+  let edge_attributes _ = [ `Dir `Forward ]
+  let default_edge_attributes _ = []
+  let get_subgraph _ = None
+  let vertex_attributes v = [ `Shape `Box; `Label v; `Fillcolor 1000 ]
+  let vertex_name v = v
+  let default_vertex_attributes _ = []
+  let graph_attributes _ = []
+end)
 
 (* [visualize] should explore all linked articles up to a distance of
    [max_depth] away from the given [origin] article, and output the result as
    a DOT file. It should use the [how_to_fetch] argument along with
    [File_fetcher] to fetch the articles so that the implementation can be
    tested locally on the small dataset in the ../resources/wiki directory. *)
-let visualize ?(max_depth = 3) ~origin ~output_file ~how_to_fetch () : unit =
-  ignore (output_file : File_path.t);
+let visualize ?(max_depth = 5) ~origin ~output_file ~how_to_fetch () : unit =
+  (* ignore (output_file : File_path.t); *)
   (* ignore (how_to_fetch : File_fetcher.How_to_fetch.t); *)
   let curr_article = { name = remove_url origin; url = origin } in
   let set : String.Hash_set.t = Core.String.Hash_set.create () in
@@ -122,7 +143,17 @@ let visualize ?(max_depth = 3) ~origin ~output_file ~how_to_fetch () : unit =
       ~depth:max_depth
       ~how_to_fetch
   in
-  print_s [%message (edges : (article * article) list)]
+  let () = print_s [%message (edges : (article * article) list)] in
+  let graph = G.create () in
+  List.iter edges ~f:(fun (first_article, second_article) ->
+    (* [G.add_edge] auomatically adds the endpoints as vertices in the graph
+       if they don't already exist. *)
+    let first_name = first_article.name in
+    let second_name = second_article.name in
+    G.add_edge graph first_name second_name);
+  Dot.output_graph
+    (Out_channel.create (File_path.to_string output_file))
+    graph
 ;;
 
 let visualize_command =
