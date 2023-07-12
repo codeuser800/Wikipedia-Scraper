@@ -20,6 +20,7 @@ type article =
   { name : string
   ; url : string
   }
+[@@deriving sexp]
 
 let wiki_link to_check =
   let value = String.split_on_chars to_check ~on:[ '/' ] in
@@ -57,17 +58,71 @@ let print_links_command =
         List.iter (get_linked_articles contents) ~f:print_endline]
 ;;
 
+let remove_url city =
+  String.substr_replace_all city ~pattern:"/wiki/" ~with_:""
+;;
+
+let next_articles ~origin ~how_to_fetch =
+  let contents = File_fetcher.fetch_exn how_to_fetch ~resource:origin in
+  get_linked_articles contents
+;;
+
+let rec get_all_articles
+  ~(article_list : (article * article) list)
+  ~(curr_link : string)
+  ~(curr_article : article)
+  ~(visited_links : String.Hash_set.t)
+  ~(depth : int)
+  ~how_to_fetch
+  : (article * article) list
+  =
+  if Int.( = ) depth 0
+  then article_list
+  else (
+    Core.Hash_set.add visited_links curr_link;
+    let next_articles = next_articles ~origin:curr_link ~how_to_fetch in
+    let fold =
+      List.fold next_articles ~init:[] ~f:(fun acc next_article ->
+        let next_article_rec =
+          { name = remove_url next_article; url = next_article }
+        in
+        let edge = curr_article, next_article_rec in
+        let new_article_list = edge :: article_list in
+        if not (Core.Hash_set.mem visited_links next_article)
+        then
+          get_all_articles
+            ~article_list:new_article_list
+            ~curr_link:next_article
+            ~curr_article:next_article_rec
+            ~visited_links
+            ~depth:(depth - 1)
+            ~how_to_fetch
+          :: acc
+        else acc)
+    in
+    List.concat fold)
+;;
+
 (* [visualize] should explore all linked articles up to a distance of
    [max_depth] away from the given [origin] article, and output the result as
    a DOT file. It should use the [how_to_fetch] argument along with
    [File_fetcher] to fetch the articles so that the implementation can be
    tested locally on the small dataset in the ../resources/wiki directory. *)
 let visualize ?(max_depth = 3) ~origin ~output_file ~how_to_fetch () : unit =
-  ignore (max_depth : int);
-  ignore (origin : string);
   ignore (output_file : File_path.t);
-  ignore (how_to_fetch : File_fetcher.How_to_fetch.t);
-  failwith "TODO"
+  (* ignore (how_to_fetch : File_fetcher.How_to_fetch.t); *)
+  let curr_article = { name = remove_url origin; url = origin } in
+  let set : String.Hash_set.t = Core.String.Hash_set.create () in
+  let edges =
+    get_all_articles
+      ~article_list:[]
+      ~curr_link:origin
+      ~curr_article
+      ~visited_links:set
+      ~depth:max_depth
+      ~how_to_fetch
+  in
+  print_s [%message (edges : (article * article) list)]
 ;;
 
 let visualize_command =
