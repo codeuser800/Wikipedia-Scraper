@@ -1,6 +1,9 @@
 open! Core
 
-let no_dots city = String.substr_replace_all city ~pattern:"." ~with_:""
+let no_dots city =
+  let no_dots = String.substr_replace_all city ~pattern:"." ~with_:"" in
+  String.substr_replace_all no_dots ~pattern:" " ~with_:""
+;;
 
 let load_file file =
   let file_list = In_channel.read_lines (File_path.to_string file) in
