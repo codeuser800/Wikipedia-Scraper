@@ -41,6 +41,36 @@ let get_neighbors ~curr_x ~curr_y ~maze_grid ~num_rows ~num_cols =
     Map.add_exn acc ~key:neighbor ~data:dir)
 ;;
 
+let rec dfs
+  ~(maze : string Core.String.Map.t Core.String.Map.t)
+  ~(curr_pos : string)
+  ~(end_pos : string)
+  ~(visited : String.Set.t)
+  ~(visited_list : string list)
+  =
+  let visited = Set.add visited curr_pos in
+  if String.equal curr_pos end_pos
+  then visited_list
+  else (
+    let neighbors = Map.find maze curr_pos in
+    match neighbors with
+    | None -> visited_list
+    | Some neighbors ->
+      Map.fold
+        neighbors
+        ~init:visited_list
+        ~f:(fun ~key:curr_neighbor_pos ~data:dir acc ->
+        if not (Set.mem visited curr_neighbor_pos)
+        then
+          dfs
+            ~maze
+            ~curr_pos:curr_neighbor_pos
+            ~end_pos
+            ~visited
+            ~visited_list:(dir :: visited_list)
+        else acc))
+;;
+
 (* let to_return = [] in if (curr_x - 1 >= 0) then let left_char = (Array.get
    maze_grid (curr_x - 1) curr_y) in if (Char.equal left_char '.' ||
    Char.equal left_char 'E') then (left_char, "left") :: to_return
@@ -58,7 +88,7 @@ let solve file =
   in
   let num_rows = Array.length array - 1 in
   let graph = String.Map.empty in
-  let y =
+  let final_graph =
     Array.foldi array ~init:graph ~f:(fun y graph row ->
       if not (Array.is_empty row)
       then (
@@ -79,7 +109,29 @@ let solve file =
           else acc))
       else graph)
   in
-  print_s [%message (y : string Core.String.Map.t Core.String.Map.t)]
+  let () =
+    print_s
+      [%message (final_graph : string Core.String.Map.t Core.String.Map.t)]
+  in
+  let tuple =
+    Array.foldi array ~init:("0,0", "0,0") ~f:(fun y (start, end_m) row ->
+      Array.foldi
+        row
+        ~init:(start, end_m)
+        ~f:(fun x (m_start, m_end) char_element ->
+        let s =
+          if Char.equal char_element 'S'
+          then string_of_int x ^ "," ^ string_of_int (y - 1)
+          else m_start
+        in
+        let e =
+          if Char.equal char_element 'E'
+          then string_of_int x ^ "," ^ string_of_int (y - 1)
+          else m_end
+        in
+        s, e))
+  in
+  print_s [%message (tuple : string * string)]
 ;;
 
 let solve_command =
