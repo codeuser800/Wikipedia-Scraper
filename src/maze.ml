@@ -52,23 +52,20 @@ let rec dfs
   if String.equal curr_pos end_pos
   then visited_list
   else (
-    let neighbors = Map.find maze curr_pos in
-    match neighbors with
-    | None -> visited_list
-    | Some neighbors ->
-      Map.fold
-        neighbors
-        ~init:visited_list
-        ~f:(fun ~key:curr_neighbor_pos ~data:dir acc ->
-        if not (Set.mem visited curr_neighbor_pos)
-        then
-          dfs
-            ~maze
-            ~curr_pos:curr_neighbor_pos
-            ~end_pos
-            ~visited
-            ~visited_list:(visited_list @ [ dir ])
-        else acc))
+    let neighbors = Map.find_exn maze curr_pos in
+    Map.fold
+      neighbors
+      ~init:visited_list
+      ~f:(fun ~key:curr_neighbor_pos ~data:dir acc ->
+      if not (Set.mem visited curr_neighbor_pos)
+      then
+        dfs
+          ~maze
+          ~curr_pos:curr_neighbor_pos
+          ~end_pos
+          ~visited
+          ~visited_list:(visited_list @ [ dir ])
+      else acc))
 ;;
 
 (* let to_return = [] in if (curr_x - 1 >= 0) then let left_char = (Array.get
