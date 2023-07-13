@@ -67,7 +67,7 @@ let rec dfs
             ~curr_pos:curr_neighbor_pos
             ~end_pos
             ~visited
-            ~visited_list:(dir :: visited_list)
+            ~visited_list:(visited_list @ [ dir ])
         else acc))
 ;;
 
@@ -113,7 +113,7 @@ let solve file =
     print_s
       [%message (final_graph : string Core.String.Map.t Core.String.Map.t)]
   in
-  let tuple =
+  let start_m, end_m =
     Array.foldi array ~init:("0,0", "0,0") ~f:(fun y (start, end_m) row ->
       Array.foldi
         row
@@ -131,7 +131,15 @@ let solve file =
         in
         s, e))
   in
-  print_s [%message (tuple : string * string)]
+  let list =
+    dfs
+      ~maze:final_graph
+      ~curr_pos:start_m
+      ~end_pos:end_m
+      ~visited:String.Set.empty
+      ~visited_list:[]
+  in
+  print_s [%message (list : string list)]
 ;;
 
 let solve_command =
