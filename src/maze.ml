@@ -9,7 +9,7 @@ let return_direction ~x_move ~y_move =
   | 1, 0 -> "Right"
   | 0, 1 -> "Down"
   | 0, -1 -> "Up"
-  | _ -> ""
+  | _ -> assert false
 ;;
 
 (* Get the neighbors of a certain cell in a position *)
@@ -49,23 +49,33 @@ let rec dfs
   ~(visited_list : string list)
   =
   let visited = Set.add visited curr_pos in
-  if String.equal curr_pos end_pos
-  then visited_list
-  else (
-    let neighbors = Map.find_exn maze curr_pos in
-    Map.fold
+  let neighbors = Map.find maze curr_pos in
+  match neighbors with
+  | None -> None
+  | Some neighbors ->
+    Map.fold_until
       neighbors
       ~init:visited_list
       ~f:(fun ~key:curr_neighbor_pos ~data:dir acc ->
-      if not (Set.mem visited curr_neighbor_pos)
-      then
-        dfs
-          ~maze
-          ~curr_pos:curr_neighbor_pos
-          ~end_pos
-          ~visited
-          ~visited_list:(visited_list @ [ dir ])
-      else acc))
+        if String.equal curr_neighbor_pos end_pos
+        then (
+          print_endline "finished";
+          Continue_or_stop.Stop (Some (visited_list @ [ dir ])))
+        else if not (Set.mem visited curr_neighbor_pos)
+        then (
+          let current_prog =
+            dfs
+              ~maze
+              ~curr_pos:curr_neighbor_pos
+              ~end_pos
+              ~visited
+              ~visited_list:(visited_list @ [ dir ])
+          in
+          match current_prog with
+          | Some list -> Stop (Some list)
+          | None -> Continue acc)
+        else Continue acc)
+      ~finish:(fun _acc -> None)
 ;;
 
 (* let to_return = [] in if (curr_x - 1 >= 0) then let left_char = (Array.get
@@ -136,7 +146,10 @@ let solve file =
       ~visited:String.Set.empty
       ~visited_list:[]
   in
-  print_s [%message (list : string list)]
+  match list with
+  | None -> print_s [%message "lose"]
+  | Some list ->
+    print_s [%message "Directions to Win: " (list : string list)]
 ;;
 
 let solve_command =
