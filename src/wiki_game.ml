@@ -1,6 +1,5 @@
 open! Core
 open! String
-open! Str
 
 (* [get_linked_articles] should return a list of wikipedia article lengths
    contained in the input.
@@ -29,6 +28,8 @@ let wiki_link to_check =
   | _ :: compare :: _ -> if String.( = ) compare "wiki" then true else false
   | _ -> false
 ;;
+
+(* let check_if_url link = if (String.is_substring link ~substring: ) ;; *)
 
 (*Remove duplicates from the list*)
 let get_linked_articles contents : string list =
@@ -66,65 +67,72 @@ let remove_url city =
   |> String.substr_replace_all ~pattern:"/" ~with_:""
 ;;
 
-let next_articles ~origin ~how_to_fetch =
-  let contents = File_fetcher.fetch_exn how_to_fetch ~resource:origin in
-  let articles = get_linked_articles contents in
-  articles
-;;
-
-let check_if_link link =
+let modify_link link =
   if String.is_substring link ~substring:"https://en.wikipedia.org"
   then link
   else "https://en.wikipedia.org" ^ link
 ;;
 
-let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link ~how_to_fetch
-  =
-  let curr_link = Queue.dequeue queue in
-  match curr_link with
-  | None -> None
-  | Some curr_node ->
-    let curr_node = check_if_link curr_node in
-    let node_neighbors = next_articles ~origin:curr_node ~how_to_fetch in
-    (match node_neighbors with
-     | [] ->
-       print_s [%message "here"];
-       bfs_wiki
-         ~depth:(depth - 1)
-         ~visited
-         ~queue
-         ~path
-         ~end_link
-         ~how_to_fetch
-     | _ ->
-       List.fold_until
-         node_neighbors
-         ~init:path
-         ~f:(fun acc curr_neighbor ->
-           let curr_neighbor = check_if_link curr_neighbor in
-           let visited = Core.Set.add visited curr_node in
-           if String.equal curr_neighbor end_link || Int.( = ) depth 0
-           then (
-             print_endline "finished";
-             Continue_or_stop.Stop (Some (path @ [ curr_neighbor ])))
-           else if not (Core.Set.mem visited curr_neighbor)
-           then (
-             Queue.enqueue queue curr_neighbor;
-             let current_prog =
-               bfs_wiki
-                 ~depth:(depth - 1)
-                 ~visited
-                 ~queue
-                 ~path:(path @ [ curr_neighbor ])
-                 ~end_link
-                 ~how_to_fetch
-             in
-             match current_prog with
-             | Some list -> Stop (Some list)
-             | None -> Continue acc)
-           else Continue acc)
-         ~finish:(fun _acc -> None))
+let next_articles ~origin ~how_to_fetch =
+  let contents = File_fetcher.fetch_exn how_to_fetch ~resource:origin in
+  let articles = get_linked_articles contents in
+  match how_to_fetch with
+  | Remote -> List.map articles ~f:modify_link
+  | _ -> articles
 ;;
+
+let rec bfs_wiki ~(depth : int) ~visited ~queue ~end_link ~how_to_fetch =
+  let node = Queue.dequeue queue in
+  match node with
+  | None -> []
+  | Some [] -> []
+  | Some (curr_node :: path) ->
+    if String.equal curr_node end_link || Int.( = ) depth 0
+    then List.rev (curr_node :: path)
+    else (
+      let node_neighbors = next_articles ~origin:curr_node ~how_to_fetch in
+      match node_neighbors with
+      | [] ->
+        bfs_wiki ~depth:(depth - 1) ~visited ~queue ~end_link ~how_to_fetch
+      | _ ->
+        let visited, found =
+          List.fold
+            node_neighbors
+            ~init:(visited, [])
+            ~f:(fun (vis_acc, found_list) curr_neighbor ->
+            if String.equal curr_neighbor end_link
+            then (
+              let list = curr_neighbor :: curr_node :: path in
+              vis_acc, list)
+            else if not (Core.Set.mem visited curr_neighbor)
+            then (
+              let list = curr_neighbor :: curr_node :: path in
+              Queue.enqueue queue list;
+              Core.Set.add vis_acc curr_node, found_list)
+            else vis_acc, found_list)
+        in
+        if List.is_empty found
+        then
+          bfs_wiki ~depth:(depth - 1) ~visited ~queue ~end_link ~how_to_fetch
+        else List.rev found)
+;;
+
+(* let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link
+   ~how_to_fetch = let curr_link = Queue.dequeue queue in match curr_link
+   with | None -> None | Some curr_node -> let node_neighbors = next_articles
+   ~origin:curr_node ~how_to_fetch in let () = print_s [%message "hello"] in
+   let () = print_s [%message (node_neighbors : string list)] in (match
+   node_neighbors with | [] -> bfs_wiki ~depth:(depth - 1) ~visited ~queue
+   ~path ~end_link ~how_to_fetch | _ -> List.fold_until node_neighbors
+   ~init:path ~f:(fun acc curr_neighbor -> let visited = Core.Set.add visited
+   curr_node in let () = print_s [%message (curr_neighbor : string)] in if
+   String.equal curr_neighbor end_link || Int.( = ) depth 0 then (
+   print_endline "finished"; Continue_or_stop.Stop (Some (path @ [ curr_node
+   ]))) else if not (Core.Set.mem visited curr_neighbor) then ( Queue.enqueue
+   queue curr_neighbor; let current_prog = bfs_wiki ~depth:(depth - 1)
+   ~visited ~queue ~path:(path @ [ curr_neighbor ]) ~end_link ~how_to_fetch
+   in match current_prog with | Some list -> Stop (Some list) | None ->
+   Continue acc) else Continue acc) ~finish:(fun _acc -> None)) ;; *)
 
 let rec get_all_articles
   ~(article_list : (article * article) list)
@@ -253,7 +261,6 @@ let find_path ~max_depth ~origin ~destination ~how_to_fetch () =
     ~depth:max_depth
     ~visited:String.Set.empty
     ~queue
-    ~path:[ origin ]
     ~end_link:destination
     ~how_to_fetch
 ;;
@@ -276,9 +283,11 @@ let find_path_command =
           ~doc:"INT maximum length of path to search for (default 10)"
       in
       fun () ->
-        match find_path ~max_depth ~origin ~destination ~how_to_fetch () with
-        | None -> print_endline "No path found!"
-        | Some trace -> List.iter trace ~f:print_endline]
+        let origin = [ origin ] in
+        let list =
+          find_path ~max_depth ~origin ~destination ~how_to_fetch ()
+        in
+        print_s [%message (list : string list)]]
 ;;
 
 let command =
