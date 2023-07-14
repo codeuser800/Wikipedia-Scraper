@@ -70,6 +70,51 @@ let next_articles ~origin ~how_to_fetch =
   get_linked_articles contents
 ;;
 
+let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link ~how_to_fetch
+  =
+  let curr_link = Queue.dequeue queue in
+  match curr_link with
+  | None -> None
+  | Some curr_node ->
+    let node_neighbors = next_articles ~origin:curr_node ~how_to_fetch in
+    (match node_neighbors with
+     | [] ->
+       bfs_wiki
+         ~depth:(depth - 1)
+         ~visited
+         ~queue
+         ~path
+         ~end_link
+         ~how_to_fetch
+     | _ ->
+       List.fold_until
+         node_neighbors
+         ~init:path
+         ~f:(fun acc curr_neighbor ->
+           let visited = Core.Set.add visited curr_node in
+           if String.equal curr_neighbor end_link || Int.( = ) depth 0
+           then (
+             print_endline "finished";
+             Continue_or_stop.Stop (Some (path @ [ curr_neighbor ])))
+           else if not (Core.Set.mem visited curr_neighbor)
+           then (
+             Queue.enqueue queue curr_neighbor;
+             let current_prog =
+               bfs_wiki
+                 ~depth:(depth - 1)
+                 ~visited
+                 ~queue
+                 ~path:(path @ [ curr_neighbor ])
+                 ~end_link
+                 ~how_to_fetch
+             in
+             match current_prog with
+             | Some list -> Stop (Some list)
+             | None -> Continue acc)
+           else Continue acc)
+         ~finish:(fun _acc -> None))
+;;
+
 let rec get_all_articles
   ~(article_list : (article * article) list)
   ~(curr_link : string)
@@ -190,12 +235,16 @@ let visualize_command =
 
    [max_depth] is useful to limit the time the program spends exploring the
    graph. *)
-let find_path ?(max_depth = 3) ~origin ~destination ~how_to_fetch () =
-  ignore (max_depth : int);
-  ignore (origin : string);
-  ignore (destination : string);
-  ignore (how_to_fetch : File_fetcher.How_to_fetch.t);
-  failwith "TODO"
+let find_path ~max_depth ~origin ~destination ~how_to_fetch () =
+  let queue = Queue.create () in
+  let () = Queue.enqueue queue origin in
+  bfs_wiki
+    ~depth:max_depth
+    ~visited:String.Set.empty
+    ~queue
+    ~path:[ origin ]
+    ~end_link:destination
+    ~how_to_fetch
 ;;
 
 let find_path_command =
