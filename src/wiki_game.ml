@@ -1,5 +1,6 @@
 open! Core
 open! String
+open! Str
 
 (* [get_linked_articles] should return a list of wikipedia article lengths
    contained in the input.
@@ -67,7 +68,14 @@ let remove_url city =
 
 let next_articles ~origin ~how_to_fetch =
   let contents = File_fetcher.fetch_exn how_to_fetch ~resource:origin in
-  get_linked_articles contents
+  let articles = get_linked_articles contents in
+  articles
+;;
+
+let check_if_link link =
+  if String.is_substring link ~substring:"https://en.wikipedia.org"
+  then link
+  else "https://en.wikipedia.org" ^ link
 ;;
 
 let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link ~how_to_fetch
@@ -76,9 +84,11 @@ let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link ~how_to_fetch
   match curr_link with
   | None -> None
   | Some curr_node ->
+    let curr_node = check_if_link curr_node in
     let node_neighbors = next_articles ~origin:curr_node ~how_to_fetch in
     (match node_neighbors with
      | [] ->
+       print_s [%message "here"];
        bfs_wiki
          ~depth:(depth - 1)
          ~visited
@@ -91,6 +101,7 @@ let rec bfs_wiki ~(depth : int) ~visited ~queue ~path ~end_link ~how_to_fetch
          node_neighbors
          ~init:path
          ~f:(fun acc curr_neighbor ->
+           let curr_neighbor = check_if_link curr_neighbor in
            let visited = Core.Set.add visited curr_node in
            if String.equal curr_neighbor end_link || Int.( = ) depth 0
            then (
